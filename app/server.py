@@ -2,7 +2,10 @@
 from __future__ import annotations
 
 import hmac
+import logging
 import os
+import subprocess
+import sys
 import threading
 import time
 from pathlib import Path
@@ -28,6 +31,30 @@ app.add_middleware(SessionMiddleware, secret_key=APP_SECRET, session_cookie="sar
                    max_age=7*24*3600, same_site="lax",
                    https_only=os.environ.get("SARA_HTTPS", "0") == "1")
 app.mount("/static", StaticFiles(directory=ROOT / "app" / "static"), name="static")
+
+# A controlled smoke test for detecting cloud-IP and extractor failures.
+# Disabled by default. Operates on one known public test video and does not save it.
+def _public_video_smoke_test():
+    log = logging.getLogger("sara.smoke")
+    command = [sys.executable, "-m", "yt_dlp", "--ignore-config", "--simulate",
+               "--no-playlist", "--force-ipv4", "--js-runtimes", "node",
+               "--socket-timeout", "15", "--retries", "0", "--extractor-retries", "0",
+               "--", "https://www.youtube.com/watch?v=jNQXAC9IVRw"]
+    try:
+        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                text=True, encoding="utf-8", errors="replace", timeout=75,
+                                stdin=subprocess.DEVNULL)
+        if result.returncode == 0:
+            log.warning("public_video_smoke=PASS engine=yt-dlp provider=youtube")
+        else:
+            log.warning("public_video_smoke=FAIL engine=yt-dlp provider=youtube reason=%s",
+                        JobManager._safe_error(result.stdout[-3500:]))
+    except Exception as exc:
+        log.warning("public_video_smoke=ERROR engine=yt-dlp provider=youtube type=%s", type(exc).__name__)
+
+
+if os.environ.get("SARA_SMOKE_ON_START") == "1":
+    threading.Thread(target=_public_video_smoke_test, daemon=True, name="sara-startup-smoke").start()
 login_lock = threading.Lock()
 login_failures: dict[str, tuple[int, float]] = {}
 
