@@ -1,0 +1,7 @@
+{
+  "id": "/", "name": "SARA Downloader", "short_name": "SARA DL",
+  "description": "أداة التحميل الشخصية للفيديو والصوت",
+  "lang": "ar", "dir": "rtl", "start_url": "/", "scope": "/",
+  "display": "standalone", "background_color": "#130e15", "theme_color": "#5B2038",
+  "icons": [{"src":"/static/icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+}

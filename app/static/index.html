@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#5B2038"><meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="SARA Download">
+  <meta name="description" content="مكتب التحميل الشخصي من روابط الفيديو والوسائط">
+  <link rel="manifest" href="/static/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/static/icon-192.png">
+  <link rel="icon" type="image/png" href="/static/icon-192.png">
+  <link rel="stylesheet" href="/static/style.css">
+  <title>SARA Downloader | أداة التحميل الخاصة</title>
+</head>
+<body>
+  <div class="background-orb orb-one" aria-hidden="true"></div><div class="background-orb orb-two" aria-hidden="true"></div>
+  <div class="shell">
+    <header class="topbar">
+      <a href="/" class="brand" aria-label="SARA Downloader">
+        <span class="brand-logo">S<span class="logo-spark">✦</span></span>
+        <span class="brand-name">SARA <b>DOWNLOADER</b><small>أداتك الشخصية لتحميل الوسائط</small></span>
+      </a>
+      <form action="/logout" method="post"><button class="logout" type="submit" aria-label="تسجيل خروج">خروج <span aria-hidden="true">↗</span></button></form>
+    </header>
+    <main>
+      <div class="eyebrow"><span class="live-dot"></span> مساحتك الشخصية · PRIVATE DESK</div>
+      <h1>الرابط عندك، <span>والتحميل عندك.</span></h1>
+      <p class="hero-text">الصق رابط الفيديو أو ارفع ملف من جهازك. اختار الجودة أو استخرج الصوت، واحفظ النتيجة على الكمبيوتر أو الآيفون.</p>
+      <div class="platforms" aria-label="المنصات الشائعة">
+        <span>YouTube</span><span>Instagram</span><span>Facebook</span><span>TikTok</span><span>X</span><span>وأكثر</span>
+      </div>
+
+      <section class="panel download-panel" aria-labelledby="link-title">
+        <div class="panel-head"><div class="panel-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.7 1.7M14 11a5 5 0 0 0-7.07 0l-3 3A5 5 0 0 0 11 21.07l1.7-1.7"/></svg></div><div><h2 id="link-title">تنزيل من رابط</h2><p>رابط عام من أي موقع يدعمه المحرك</p></div></div>
+        <form id="linkForm">
+          <label for="mediaUrl">رابط الفيديو</label>
+          <div class="url-field"><input type="url" id="mediaUrl" name="url" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off" autocapitalize="off" spellcheck="false" required><button type="button" class="paste-btn" id="pasteBtn">لصق</button></div>
+          <div class="quality-title">اختار الصيغة والجودة</div>
+          <div class="format-options" role="radiogroup" aria-label="صيغة التنزيل">
+            <label class="format"><input type="radio" name="mode" value="best" checked><span>أفضل جودة<small>تلقائي</small></span></label>
+            <label class="format"><input type="radio" name="mode" value="1080"><span>1080p<small>Full HD</small></span></label>
+            <label class="format"><input type="radio" name="mode" value="720"><span>720p<small>HD</small></span></label>
+            <label class="format"><input type="radio" name="mode" value="audio"><span>MP3<small>صوت فقط</small></span></label>
+          </div>
+          <button class="primary" id="downloadBtn" type="submit"><span class="dl-icon" aria-hidden="true">↓</span><span>ابدأ التحميل</span><span class="btn-end" aria-hidden="true">↗</span></button>
+          <p id="linkError" class="form-error" role="alert" hidden></p>
+        </form>
+      </section>
+
+      <section class="panel upload-panel" aria-labelledby="upload-title">
+        <div class="panel-head"><div class="panel-icon secondary-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 16V3m0 0-4 4m4-4 4 4M4 13v5a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-5"/></svg></div><div><h2 id="upload-title">ملف من واتساب أو الجهاز</h2><p>مناسب للفيديوهات والصور والصوت المحفوظة عندك</p></div></div>
+        <form id="uploadForm">
+          <label class="dropzone" for="localFile" id="dropzone">
+            <span class="drop-icon">＋</span><strong id="filePrompt">اختار ملف أو اسحبه هنا</strong><small id="fileSub">MP4 · MOV · MP3 · M4A · JPG · PNG وغيرها</small>
+            <input type="file" id="localFile" name="file" accept="video/*,audio/*,image/*,.opus,.heic,.mkv,.webm,.ogg,.flac">
+          </label>
+          <div class="upload-row"><label for="uploadMode">العملية</label><select id="uploadMode"><option value="original">حفظ الملف الأصلي</option><option value="audio">استخراج الصوت MP3</option></select></div>
+          <button class="secondary" id="uploadBtn" type="submit">رفع وتجهيز الملف <span aria-hidden="true">↗</span></button>
+          <p id="uploadError" class="form-error" role="alert" hidden></p>
+        </form>
+      </section>
+
+      <section class="results" aria-labelledby="results-title">
+        <div class="results-top"><div><div class="eyebrow small-eyebrow">YOUR DOWNLOADS</div><h2 id="results-title">التحميلات الأخيرة</h2></div><button type="button" class="refresh" id="refreshBtn">↻ تحديث</button></div>
+        <div id="jobs" class="jobs" aria-live="polite"><div class="empty-state"><div class="empty-icon">↓</div><strong>مفيش تحميلات لسه</strong><p>ابدأ برابط أو ملف، والنتيجة هتظهر هنا.</p></div></div>
+      </section>
+      <section class="notes" aria-label="معلومات مهمة"><span>◈ دخول خاص بكلمة مرور</span><span>◈ حذف تلقائي للملفات بعد 4 ساعات</span><span>◈ لا يدعم تجاوز المحتوى الخاص أو DRM</span></section>
+    </main>
+    <footer><span>SARA DOWNLOADER</span><span>PERSONAL EDITION · V1.0</span></footer>
+  </div>
+  <script defer src="/static/app.js"></script>
+</body>
+</html>
