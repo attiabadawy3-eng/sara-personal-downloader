@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import ipaddress
+import logging
 import os
 import re
 import shutil
@@ -16,6 +17,8 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import urlsplit
+
+LOG = logging.getLogger("sara.downloader")
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = Path(os.environ.get("SARA_DATA_DIR", str(ROOT / "downloads"))).resolve()
@@ -218,23 +221,33 @@ class JobManager:
 
     @staticmethod
     def _safe_error(message: str) -> str:
-        # Avoid revealing server-side paths or raw tracebacks to the client.
+        """User-safe diagnostics; never return an unredacted external URL or subprocess logs."""
         msg = message.lower()
+        if any(p in msg for p in ("not a bot", "captcha", "robot check", "automated queries")):
+            return "الموقع طلب التحقق من أن الطلب ليس روبوتًا. قد يكون عنوان خادم Render محظورًا؛ جرّب التحميل من جهازك المحلي."
+        if any(p in msg for p in ("http error 403", "403 forbidden", "access denied", "forbidden (403)")):
+            return "الموقع رفض الاتصال من خادم الاستضافة (HTTP 403). لا يمكن ضمان تحميل هذا الرابط من Render."
+        if any(p in msg for p in ("http error 429", "429 too many requests", "too many requests", "rate limit exceeded")):
+            return "الموقع أوقف الطلبات مؤقتًا (HTTP 429). لا تعيد المحاولة باستمرار؛ انتظر ثم حاول لاحقًا."
+        if "no supported javascript runtime" in msg or "js challenge" in msg or "challenge solving failed" in msg:
+            return "تعذر حل متطلبات JavaScript الخاصة بالموقع؛ يحتاج محرك التنزيل إلى تحديث أو Runtime مناسب."
         if "ffmpeg" in msg:
-            return "تعذر تحويل الملف؛ تأكد من تثبيت FFmpeg أو أن الملف يحتوي على صوت"
+            return "تعذر تحويل الملف بواسطة FFmpeg؛ قد تكون الصيغة غير مدعومة أو لا تحتوي على صوت."
         if "unsupported url" in msg or "no suitable" in msg:
-            return "الموقع أو الرابط غير مدعوم حاليًا"
-        if "sign in" in msg or "login" in msg or "private video" in msg:
-            return "الوسائط الخاصة تحتاج تسجيل الدخول ولا يمكن تنزيلها بالرابط العام"
-        if "video unavailable" in msg or "not available" in msg:
-            return "الفيديو غير متاح أو غير قابل للتنزيل"
+            return "الرابط أو الموقع غير مدعوم حاليًا."
+        if "sign in" in msg or "login" in msg or "private video" in msg or "authentication" in msg:
+            return "المحتوى غير عام أو يحتاج تسجيل دخول؛ التطبيق لا يستطيع تنزيله بدون تصريح من الموقع."
         if "requested format" in msg:
-            return "الجودة المطلوبة غير متاحة لهذا الرابط؛ اختر تلقائي"
-        if "larger than max-filesize" in msg or "limit exceeded" in msg:
-            return "الملف أكبر من الحد المسموح"
+            return "الجودة المطلوبة غير متاحة؛ اختر أفضل جودة تلقائيًا."
+        if "video unavailable" in msg or "not available" in msg or "removed" in msg:
+            return "الفيديو غير متاح أو تمت إزالته."
+        if "larger than max-filesize" in msg or "limit exceeded" in msg or "file is larger" in msg:
+            return f"الفيديو أكبر من الحد المسموح ({MAX_MB} MB) على الاستضافة المجانية."
+        if any(p in msg for p in ("timed out", "name resolution", "temporary failure", "unable to download webpage")):
+            return "تعذر الاتصال بموقع الفيديو من الخادم؛ قد يكون عطل شبكة أو حظرًا مؤقتًا."
         if "not found" in msg and "yt_dlp" in msg:
-            return "مكتبة التحميل غير مثبتة؛ شغّل ملف التشغيل لتثبيت المتطلبات"
-        return "تعذّر إكمال الطلب؛ قد يكون الموقع يمنع التنزيل أو يحتاج تحديث محرك التحميل"
+            return "محرك yt-dlp غير مثبت بشكل صحيح على الخادم."
+        return "فشل محرك التحميل. الرابط قد يكون محميًا أو الموقع يمنع الاتصال من الاستضافة؛ جرّب رابطًا عامًا آخر."
 
     def _run(self, job: Job, cmd: list[str], *, progress: bool = False):
         popen_args = dict(cwd=str(self.data_dir / job.id), stdout=subprocess.PIPE,
@@ -269,7 +282,11 @@ class JobManager:
         if job.cancel_requested:
             raise RuntimeError("cancelled")
         if proc.returncode != 0:
-            raise RuntimeError(" ".join(lines[-6:])[-900:])
+            detail = " ".join(lines[-12:])[-3500:]
+            # Log only classified errors; never expose user-provided URLs, cookies or tokens.
+            LOG.warning("media_job_failed id=%s kind=%s returncode=%d category=%s",
+                        job.id[:12], job.kind, proc.returncode, self._safe_error(detail))
+            raise RuntimeError(detail)
 
     def _choose_output(self, job: Job) -> Path:
         dest = self.data_dir / job.id
@@ -286,7 +303,7 @@ class JobManager:
         dest = self.data_dir / job.id
         cmd = [sys.executable, "-m", "yt_dlp", "--ignore-config", "--no-playlist",
                "--newline", "--no-mtime", "--retries", "2", "--fragment-retries", "2",
-               "--socket-timeout", "20", "--js-runtimes", "node", "--max-filesize", f"{MAX_MB}M",
+               "--socket-timeout", "20", "--force-ipv4", "--js-runtimes", "node", "--max-filesize", f"{MAX_MB}M",
                "--restrict-filenames", "--trim-filenames", "100", "--no-overwrites",
                "--output", "%(title).80B-%(id)s.%(ext)s"]
         if job.mode == "audio":
