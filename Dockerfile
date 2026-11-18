@@ -6,10 +6,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     SARA_HTTPS=1 \
     SARA_MAX_MB=150 \
     SARA_DATA_DIR=/tmp/sara-downloads
-RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg ca-certificates libatomic1 && rm -rf /var/lib/apt/lists/*
 WORKDIR /srv
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt && node --version && python -m yt_dlp --version
 COPY app/ ./app/
 RUN useradd -r -u 10001 sara && mkdir -p /tmp/sara-downloads && chown sara:sara /tmp/sara-downloads
 USER sara
